@@ -1,8 +1,17 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+const pool = require("./config/db");
 
 const app = express();
+
+pool.connect((err) => {
+  if (err) {
+    console.error("Database connection error:", err);
+  } else {
+    console.log("Connected to PostgreSQL");
+  }
+});
 
 app.use(cors());
 app.use(express.json());

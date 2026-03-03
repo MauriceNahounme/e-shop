@@ -8,9 +8,12 @@ services:
     container_name: frontoffice
     restart: always
     ports:
-      - 3000:3000
+      - "8080:80"
+    depends_on:
+      - backoffice
     networks:
-      - ecommerce-network
+      - ecommerce-public-network
+      - ecommerce-private-network
 
   backoffice:
     build:
@@ -19,31 +22,53 @@ services:
     container_name: backoffice
     restart: always
     depends_on:
-      - db
-    ports:
-      - 5000:5000
+      postgres_db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
-      - ecommerce-network
+      - ecommerce-private-network
 
   postgres_db:
-    image: postgresql:17-alpine
+    image: postgres:17-alpine
     container_name: postgres_db
     environment:
-      DB_HOST: ${DB_HOST}
-      DB_NAME: ${DB_NAME}
-      DB_PASSWORD_FILE: /run/secrets/db_secrets
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_secrets
     secrets:
       - db_secrets
     volumes:
       - db_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-private-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    container_name: redis_server
+    restart: always
+    command: ["redis-server", "--requirepass", "$(cat /run/secrets/redis_secrets"]
+    secrets:
+      - redis_secrets
+    networks:
+      - ecommerce-private-network
 
 volumes:
   db_data:
 
 secrets:
   db_secrets:
-    file: ./secrets/db.text
+    file: ./secrets/db.txt
+  redis_secrets:
+    file: ./secrets/redis.txt
 
 networks:
-  ecommerce-network:
+  ecommerce-public-network:
+    driver: bridge
+  ecommerce-private-network:
     driver: bridge

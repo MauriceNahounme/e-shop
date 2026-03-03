@@ -12,3 +12,6 @@
 /build
 /backoffice/build
 /frontoffice/build
+
+# Secrets
+/secrets

@@ -1,25 +1,33 @@
 version: "3.6"
 
 services:
+  server:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    networks:
+      - ecommerce-public-network
+      - ecommerce-private-network
+    depends_on:
+      - frontoffice
+      - backoffice
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    restart: always
   frontoffice:
     build:
       context: ./frontoffice
       dockerfile: Dockerfile
-    container_name: frontoffice
     restart: always
-    ports:
-      - "8080:80"
     depends_on:
       - backoffice
     networks:
-      - ecommerce-public-network
       - ecommerce-private-network
 
   backoffice:
     build:
       context: ./backoffice
       dockerfile: Dockerfile
-    container_name: backoffice
     restart: always
     depends_on:
       postgres_db:
@@ -31,7 +39,6 @@ services:
 
   postgres_db:
     image: postgres:17-alpine
-    container_name: postgres_db
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
@@ -50,9 +57,8 @@ services:
 
   redis:
     image: redis:8-alpine
-    container_name: redis_server
     restart: always
-    command: ["redis-server", "--requirepass", "$(cat /run/secrets/redis_secrets"]
+    command: sh -c "redis-server --requirepass $(cat /run/secrets/redis_secrets)"
     secrets:
       - redis_secrets
     networks:
